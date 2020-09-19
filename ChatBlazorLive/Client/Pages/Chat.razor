@@ -1,0 +1,47 @@
+﻿@page "/chat"
+@using ChatBlazorLive.Shared
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager NM
+
+<EditForm Model="_chatPoruka" OnSubmit="PosaljiPoruku">
+	<p>Ime:</p>
+	<p><InputText @bind-Value="_chatPoruka.Korisnik" /></p>
+	<p>Poruka:</p>
+	<p><InputText @bind-Value="_chatPoruka.Sadrzaj" /></p>
+	<button class="btn btn-primary" type="submit">Posalji</button>
+</EditForm>
+<ul>
+	@foreach (ChatPoruka p in _istorija)
+	{
+		<li>[@p.VremeSlanja] @p.Korisnik: @p.Sadrzaj</li>
+	}
+</ul>
+@code 
+{
+	private HubConnection _hc;
+	private ChatPoruka _chatPoruka = new ChatPoruka();
+	private List<ChatPoruka> _istorija = new List<ChatPoruka>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		_hc = new HubConnectionBuilder().WithUrl(NM.ToAbsoluteUri("ch")).Build();
+
+		_hc.On<ChatPoruka>("pp", cPoruka => PorukaKaKlijentu(cPoruka));
+
+		await _hc.StartAsync();
+	}
+
+	private void PosaljiPoruku()
+	{
+		_chatPoruka.VremeSlanja = DateTime.Now;
+		_hc.SendAsync("PrimiPoruku", _chatPoruka);
+		_chatPoruka.Sadrzaj = "";
+	}
+
+	public void PorukaKaKlijentu(ChatPoruka poruka)
+	{
+		_istorija.Add(poruka);
+		StateHasChanged();
+	}
+
+}
